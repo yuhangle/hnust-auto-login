@@ -152,7 +152,7 @@ def cli():
 @click.option("--username", '-u', prompt="你的学号", default=getProperties("username"))
 @click.option("--password", '-p', hide_input=True, prompt="你的校园网密码",
               default=("*" * len(getProperties("password")) if getProperties("password") else None))  # 能够回车直接输入默认值
-@click.option("--operator", '-o', prompt="运营商选择[dx,yd,lt,xyw]", default=getProperties("operator"))
+@click.option("--operator", '-o', prompt="运营商选择[dx,yd,lt,xyw]（代号分别对应电信,移动,联通,校园网）", default=getProperties("operator"))
 
 #自动登录校园网功能
 
@@ -323,7 +323,7 @@ def addStartup():
 @click.option("--username", '-u', prompt="你的学号", default=getProperties("username"))
 @click.option("--password", '-p', hide_input=True, prompt="你的校园网密码",
               default=("*" * len(getProperties("password")) if getProperties("password") else None))  # 能够回车直接输入默认值
-@click.option("--operator", '-o', prompt="运营商选择[dx,yd,lt,xyw]", default=getProperties("operator"))
+@click.option("--operator", '-o', prompt="运营商选择[dx,yd,lt,xyw]（代号分别对应电信,移动,联通,校园网）", default=getProperties("operator"))
 
 @click.option("--rip", '-i', prompt="你的路由器IP地址", default=getProperties("rip"))
 
