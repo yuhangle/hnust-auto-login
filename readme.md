@@ -4,7 +4,7 @@
 #### 一, 使用`Python`解释器
 在安装好了python解释器之后,打开命令行输入来以登录校园网
 ```bash
-python hnust.py route
+python hnust.py router
 ```
 >若你这么做了,程序会询问你的密码和账号,你不用担心你的密码会被泄露. 
 >因为这个软件是一个开源软件, 你随时拥有可以查看该软件源代码的权利. 
@@ -12,7 +12,7 @@ python hnust.py route
 #### 二, 使用`exe`可执行文件启动
 >同样的, 软件的功能是一样的只是运行效率稍微低了, 输入以下命令来运行软件
 ```bash
-./hnust.exe route
+./hnust.exe router
 ```
 
 >原版项目地址https://github.com/notnotype/hnust-auto-login
