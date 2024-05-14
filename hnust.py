@@ -113,38 +113,44 @@ def isInternetAccess():
         return False
 
 
+def get_config_file_path():
+    script_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+    return os.path.join(script_dir, ".config")
+
 def getProperties(prop):
-    f = open("./.config", "a")
+    config_file = get_config_file_path()
+    # 使用config_file来代替"./.config"
+    f = open(config_file, "a+")
     f.close()
     kv = {}
-    f = open("./.config", "r")
+    f = open(config_file, "r")
     for line in f:
         temp = line.split("=")
         kv[temp[0].strip()] = temp[1].strip()
     f.close()
     return kv[prop] if prop in kv else ""
 
-
 def setProperties(key, value):
+    config_file = get_config_file_path()
     key, value = str(key), str(value)
     kv = {}
-    f = open("./.config", "r")
+    f = open(config_file, "r")
     for line in f:
         temp = line.split("=")
         kv[temp[0].strip()] = temp[1].strip()
     kv[key] = value
     f.close()
-    f = open("./.config", "w+")
+    f = open(config_file, "w+")
     for k, v in kv.items():
         f.write(k + " = " + v)
         f.write("\n")
     f.close()
 
-
 @click.group()
 def cli():
     """当遇到bug时尝试重新输入密码登录 运行`python login`"""
     pass
+
 
 
 # noinspection PyBroadException
