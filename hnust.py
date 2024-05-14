@@ -38,6 +38,8 @@ class FormatFilter(logging.Filter):
         return True
 
 
+#log记录
+
 def init_logger(log_dir='log', level=logging.INFO) -> logging.Logger:
     if not exists(log_dir):
         os.mkdir(log_dir)
@@ -151,9 +153,12 @@ def cli():
 @click.option("--password", '-p', hide_input=True, prompt="你的校园网密码",
               default=("*" * len(getProperties("password")) if getProperties("password") else None))  # 能够回车直接输入默认值
 @click.option("--operator", '-o', prompt="运营商选择[dx,yd,lt,xyw]", default=getProperties("operator"))
+
+#自动登录校园网功能
+
 def login(username, password, operator):
     """
-    用校园网用户名（学号）和校园网密码登录校园网
+    用校园网用户名（学号）和校园网密码登录校园网。（如果你用了路由器，请使用router命令）
     """
     # 如果网络可以访问则直接退出程序
     if isInternetAccess():
@@ -285,9 +290,9 @@ def addStartup():
             "explorer.exe \"C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp")
         logger.info("记得使用管理员的身份运行")
         logger.warning("已经禁用此功能, 若要实现开机自启请使用windows计划任务代替之")
-        cmd1 = f"copy hnust.py \"C:\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp\\hnust.py\""
-        cmd2 = f"copy .config \"C:\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp\\.config\""
-        cmd3 = f"copy hnust.exe \"C:\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp\\hnust.exe\""
+        cmd1 = r"copy hnust.py \"C:\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp\\hnust.py\""
+        cmd2 = r"copy .config \"C:\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp\\.config\""
+        cmd3 = r"copy hnust.exe \"C:\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp\\hnust.exe\""
 
         logger.info("cmd1: " + cmd1)
         logger.info("cmd2: " + cmd2)
@@ -311,10 +316,105 @@ def addStartup():
         raise
 
 
+#自动登录校园网功能（连接路由器版本）
+
+# noinspection PyBroadException
+@click.command()
+@click.option("--username", '-u', prompt="你的学号", default=getProperties("username"))
+@click.option("--password", '-p', hide_input=True, prompt="你的校园网密码",
+              default=("*" * len(getProperties("password")) if getProperties("password") else None))  # 能够回车直接输入默认值
+@click.option("--operator", '-o', prompt="运营商选择[dx,yd,lt,xyw]", default=getProperties("operator"))
+
+@click.option("--rip", '-i', prompt="你的路由器IP地址", default=getProperties("rip"))
+
+def router(username, password, operator,rip):
+    """
+    login命令的路由器网络版本，填写路由器ip地址使得路由器可登录校园网
+    """
+    # 如果网络可以访问则直接退出程序
+    if isInternetAccess():
+        logger.info('网络可以访问, 退出程序')
+        return
+
+        # 因为密码是不能给别人看见的，所有要在这里检测缓存的密码
+
+    if password == "*" * len(getProperties("password")) or password is None:
+        password = getProperties("password")
+
+    setProperties("username", username)
+    setProperties("password", password)
+    setProperties("rip", rip)
+    setProperties("operator", operator)
+
+    operatorMap = {"dx": "%40telecom",
+                   "yd": "%40cmcc", "lt": "%40unicom", "xyw": ""}
+
+    retry = 0
+    # todo抽象成一个方法来检测是否能上网
+    while True:  # 检测是否能够连接上网
+        resp = ''
+        try:
+            resp = get(
+                f"http://login.hnust.cn:801/eportal/?c=Portal&a=login&callback=dr1004&login_method=1&user_account=%2C0" +
+                f"%2C{username}{operatorMap[operator]}&user_password={password}&wlan_user_ip={rip}&wlan_user_ipv6" +
+                f"=&wlan_user_mac=000000000000&wlan_ac_ip=&wlan_ac_name=&jsVersion=3.3.3&v={random.randint(1000, 9999)}",
+                # 防止缓存
+                timeout=5)
+            if resp.text == r'dr1004({"result":"1","msg":"\u8ba4\u8bc1\u6210\u529f"})':
+                message = f"[登录状态]: 登录成功: 运营商是: [{operator}]"
+                logger.info(message)
+            elif resp.text == r'dr1004({"result":"0","msg":"","ret_code":2})':
+                message = "[登录状态]: 已经登录了"
+                logger.info(message)
+                logger.info("退出登录中......")
+                _logOut()
+                continue  # 都已经退出登录了,就不要在检测是否可以连接至internet了
+            elif "dXNlcmlkIGVycm9y" in resp.text:  # 检测userid error是否在返回值里面
+                message = "[登录状态]: 密码错误(检查是否有绑定运营商账号)"
+                logger.warning(message)
+                break
+            elif r"\u5bc6\u7801\u4e0d\u80fd\u4e3a\u7a7a" in resp.text:
+                message = "[登录状态]: 密码不能为空"
+                logger.info(message)
+                break
+            else:
+                message = "[登录状态]: 芜湖, 未处理信息: " + \
+                    b64decode(json.loads(resp.text[7:-1])['msg']).decode()
+                logger.error(message)
+                break
+
+            logger.info("检测是否可以连接到互联网......")
+            if isInternetAccess():
+                logger.info("可以连接互联网  登陆成功")
+                return
+            else:
+                if retry >= 10:
+                    logger.info("该账号不能连接至Internet(你可能使用校园网登录,因此不能连接至互联网)")
+                    return
+                logger.info("不能连接互联网, 重试")
+        except ConnectTimeout:
+            message = "超时(你可能没有连接校园网wifi)"
+            logger.error(message)
+        except ConnectionError:
+            message = "找不到主机(你可能没有连接校园网wifi)"
+            logger.error(message)
+        except BaseException as e:
+            logger.error("未知错误[{}]".format(type(e)))
+            if resp != '':
+                logger.error("resp.text: {}".format(resp.text))
+        finally:
+            retry += 1
+            sleep(1)
+            if retry >= 600:
+                break
+            # logger.info("尝试次数: " + str(retry))
+
+
 cli.add_command(login)
 cli.add_command(logOut)
 cli.add_command(getInfo)
 cli.add_command(addStartup)
+cli.add_command(router)
 
 init_logger(level=logging.DEBUG)
 if __name__ == '__main__':
@@ -326,5 +426,8 @@ if __name__ == '__main__':
                         "password") if getProperties("password") else None,
                     "--operator", getProperties(
                         "operator") if getProperties("operator") else None,
+                    "--rip", getProperties(
+                        "rip") if getProperties("rip") else None,
                     ]
     cli()
+#此版本为Notype学长的hnust-auto-login的改进版，原版无法在路由器环境下工作，故我基于原版新增了路由器网络功能，将login命令中的自动获取设备ip改成手动填写自己的路由器ip，使得软件可在路由器环境下自动登录校园网。
