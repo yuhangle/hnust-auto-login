@@ -411,8 +411,6 @@ def router(username, password, operator,rip):
         finally:
             retry += 1
             sleep(1)
-            if retry >= 600:
-                break
             # logger.info("尝试次数: " + str(retry))
 
 
